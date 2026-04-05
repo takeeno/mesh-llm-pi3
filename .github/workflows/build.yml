@@ -30,7 +30,7 @@ jobs:
         run: cargo build --release --target aarch64-unknown-linux-gnu
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          # パス指定を削除し、この1行だけで「自分でソースからビルドせよ」と命じます
+          # ここが重要：OpenSSLをソースから自動ビルドして埋め込みます
           OPENSSL_NO_VENDOR: "0"
 
       - name: Upload Binary
