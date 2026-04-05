@@ -1,4 +1,4 @@
-name: Pi3 Auto Build
+name: Pi3 Auto Build (No OpenSSL Version)
 
 on:
   workflow_dispatch:
@@ -15,10 +15,19 @@ jobs:
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Install Build Dependencies
+      - name: Install Cross-Linker
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu perl make
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Force Rustls (No OpenSSL)
+        working-directory: mesh-llm
+        run: |
+          # Cargo.tomlを書き換えて、OpenSSLへの依存をRustlsに差し替えます
+          # これにより、ビルド時にOpenSSLを探しに行くプロセス自体を消滅させます
+          sed -i 's/features = \["native-tls"\]/features = \["rustls-tls"\]/g' Cargo.toml || true
+          # 全体でOpenSSLを使わないように依存関係を整理
+          cargo update
 
       - name: Prepare Dummy UI
         run: |
@@ -27,11 +36,10 @@ jobs:
 
       - name: Build for ARM64
         working-directory: mesh-llm
-        # 環境変数をコマンドの直前に置くことで、確実にビルドプロセスに渡します
         run: |
           export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-          export OPENSSL_NO_VENDOR=0
-          export OPENSSL_STATIC=1
+          # OpenSSLを一切使わない設定でビルド
+          cargo build --release --target aarch64-unknown-linux-gnu --no-default-features --features rustls-tls || \
           cargo build --release --target aarch64-unknown-linux-gnu
 
       - name: Upload Binary
