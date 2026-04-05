@@ -1,4 +1,4 @@
-name: Pi3 Auto Build (True Final)
+name: Pi3 Auto Build (Final Decisive)
 
 on:
   workflow_dispatch:
@@ -15,30 +15,32 @@ jobs:
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Install Cross Tool
-        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu perl make
 
       - name: Prepare Dummy UI
         run: |
           mkdir -p mesh-llm/ui/dist
           echo "<html><body>Mesh-LLM Core Only</body></html>" > mesh-llm/ui/dist/index.html
 
-      - name: Configure Cross (Force OpenSSL Setup)
+      - name: Force OpenSSL Vendored via Cargo.toml
         working-directory: mesh-llm
         run: |
-          # Cross.tomlを作成し、OpenSSLが同梱されたイメージを指定します
-          cat <<EOF > Cross.toml
-          [target.aarch64-unknown-linux-gnu]
-          image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:edge"
-          pre-build = ["apt-get update && apt-get install -y libssl-dev:arm64 pkg-config:arm64"]
-          EOF
+          # 依存関係にある openssl-sys に 'vendored' フラグを強制的に注入します。
+          # これにより、pkg-config を見に行く動作そのものを封じ込めます。
+          cargo add openssl --features vendored
+          cargo update
 
-      - name: Build for ARM64 using Cross
+      - name: Build for ARM64
         working-directory: mesh-llm
-        # 内部でOpenSSLをビルドするように強制します
-        run: cross build --release --target aarch64-unknown-linux-gnu
-        env:
-          OPENSSL_NO_VENDOR: "0"
+        run: |
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          # 環境変数でも念押しして、ソースからのコンパイルを強制します
+          export OPENSSL_NO_VENDOR=0
+          export OPENSSL_STATIC=1
+          cargo build --release --target aarch64-unknown-linux-gnu
 
       - name: Upload Binary
         uses: actions/upload-artifact@v4
