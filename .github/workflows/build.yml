@@ -1,7 +1,7 @@
 name: Pi3 Auto Build
 
 on:
-  workflow_dispatch: # Web画面の「Run workflow」ボタンでいつでも実行可能
+  workflow_dispatch:
 
 jobs:
   build:
@@ -27,9 +27,15 @@ jobs:
 
       - name: Build for ARM64
         working-directory: mesh-llm
+        # OPENSSL_STATIC=1 と OPENSSL_NO_VENDOR=0 を指定して
+        # OpenSSLが必要な場合も自動でビルドに組み込ませます
         run: cargo build --release --target aarch64-unknown-linux-gnu
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          OPENSSL_DIR: /usr/lib/aarch64-linux-gnu
+          OPENSSL_STATIC: "1"
+          # 以下の設定が重要：OpenSSLをソースからビルドしてバイナリに埋め込みます
+          OPENSSL_NO_VENDOR: "0"
 
       - name: Upload Binary
         uses: actions/upload-artifact@v4
