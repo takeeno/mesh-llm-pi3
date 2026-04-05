@@ -1,4 +1,4 @@
-name: Pi3 Auto Build (Robust Version)
+name: Pi3 Auto Build
 
 on:
   workflow_dispatch:
@@ -15,20 +15,24 @@ jobs:
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Install Cross Tool
-        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu perl make
 
       - name: Prepare Dummy UI
         run: |
           mkdir -p mesh-llm/ui/dist
           echo "<html><body>Mesh-LLM Core Only</body></html>" > mesh-llm/ui/dist/index.html
 
-      - name: Build for ARM64 using Cross
+      - name: Build for ARM64
         working-directory: mesh-llm
-        # cross を使うことで、複雑な環境変数を自動で解決させます
-        run: cross build --release --target aarch64-unknown-linux-gnu
-        env:
-          OPENSSL_NO_VENDOR: "0"
+        # 環境変数をコマンドの直前に置くことで、確実にビルドプロセスに渡します
+        run: |
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          export OPENSSL_NO_VENDOR=0
+          export OPENSSL_STATIC=1
+          cargo build --release --target aarch64-unknown-linux-gnu
 
       - name: Upload Binary
         uses: actions/upload-artifact@v4
