@@ -1,4 +1,4 @@
-name: Pi3 Auto Build
+name: Pi3 Auto Build (Robust Version)
 
 on:
   workflow_dispatch:
@@ -15,22 +15,19 @@ jobs:
         with:
           targets: aarch64-unknown-linux-gnu
 
-      - name: Install Cross-Linker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Install Cross Tool
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Prepare Dummy UI
         run: |
           mkdir -p mesh-llm/ui/dist
           echo "<html><body>Mesh-LLM Core Only</body></html>" > mesh-llm/ui/dist/index.html
 
-      - name: Build for ARM64
+      - name: Build for ARM64 using Cross
         working-directory: mesh-llm
-        run: cargo build --release --target aarch64-unknown-linux-gnu
+        # cross を使うことで、複雑な環境変数を自動で解決させます
+        run: cross build --release --target aarch64-unknown-linux-gnu
         env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-          # この設定が重要：OpenSSLをソースからビルドしてバイナリに埋め込みます
           OPENSSL_NO_VENDOR: "0"
 
       - name: Upload Binary
