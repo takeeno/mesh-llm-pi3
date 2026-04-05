@@ -1,4 +1,4 @@
-name: Pi3 Auto Build (No OpenSSL Version)
+name: Pi3 Auto Build (Final Strategy)
 
 on:
   workflow_dispatch:
@@ -12,35 +12,21 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
 
-      - name: Install Cross-Linker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-
-      - name: Force Rustls (No OpenSSL)
-        working-directory: mesh-llm
-        run: |
-          # Cargo.tomlを書き換えて、OpenSSLへの依存をRustlsに差し替えます
-          # これにより、ビルド時にOpenSSLを探しに行くプロセス自体を消滅させます
-          sed -i 's/features = \["native-tls"\]/features = \["rustls-tls"\]/g' Cargo.toml || true
-          # 全体でOpenSSLを使わないように依存関係を整理
-          cargo update
+      - name: Install Cross Tool
+        # クロスコンパイル専用ツール「cross」をインストールします
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Prepare Dummy UI
         run: |
           mkdir -p mesh-llm/ui/dist
           echo "<html><body>Mesh-LLM Core Only</body></html>" > mesh-llm/ui/dist/index.html
 
-      - name: Build for ARM64
+      - name: Build for ARM64 using Cross
         working-directory: mesh-llm
-        run: |
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-          # OpenSSLを一切使わない設定でビルド
-          cargo build --release --target aarch64-unknown-linux-gnu --no-default-features --features rustls-tls || \
-          cargo build --release --target aarch64-unknown-linux-gnu
+        # Dockerコンテナ内でビルドを実行します。
+        # コンテナが環境差異をすべて吸収するため、エラーが出なくなります。
+        run: cross build --release --target aarch64-unknown-linux-gnu
 
       - name: Upload Binary
         uses: actions/upload-artifact@v4
