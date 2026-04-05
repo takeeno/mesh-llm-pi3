@@ -1,0 +1,38 @@
+name: Pi3 Auto Build
+
+on:
+  workflow_dispatch: # Web画面の「Run workflow」ボタンでいつでも実行可能
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone original mesh-llm
+        run: git clone https://github.com/michaelneale/mesh-llm.git .
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+
+      - name: Install Cross-Linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Prepare Dummy UI
+        run: |
+          mkdir -p mesh-llm/ui/dist
+          echo "<html><body>Mesh-LLM Core Only</body></html>" > mesh-llm/ui/dist/index.html
+
+      - name: Build for ARM64
+        working-directory: mesh-llm
+        run: cargo build --release --target aarch64-unknown-linux-gnu
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: mesh-llm-binary
+          path: target/aarch64-unknown-linux-gnu/release/mesh-llm
